@@ -36,7 +36,7 @@ var __generator = (this && this.__generator) || function (thisArg, body) {
     }
 };
 // If running in an older Node.js version, install a fetch polyfill (e.g. node-fetch).   
-var API_KEY = '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';
+var API_KEY = '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';
 // Modify or add your system prompt if needed.   
 var systemPrompt = "You are a helpful assistant.";
 // Define the query you want to ask, appending it to the system prompt.   

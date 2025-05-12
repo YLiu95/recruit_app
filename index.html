@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Minimal Chat Prompt</title>
+  <title>Minimal Chat Prompt with API</title>
 
   <!-- Google Font (optional) -->
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600&display=swap" rel="stylesheet" />
@@ -28,11 +28,12 @@
       font-family: 'Inter', system-ui, sans-serif;
     }
     body {
-      height: 100svh;                    /* full-viewport height, supports mobile */
+      min-height: 100svh; /* Use min-height to allow content to expand */
       display: flex;
       flex-direction: column;
       align-items: center;
-      justify-content: center;
+      padding-top: 5vh; 
+      padding-bottom: 5vh; 
       background: var(--bg);
       color: var(--text);
     }
@@ -54,7 +55,7 @@
     /* ===== Text input ===== */
     .prompt input {
       width: 100%;
-      padding: 1.1rem 3.5rem 1.1rem 1.25rem;  /* extra right-space for button */
+      padding: 1.1rem 3.5rem 1.1rem 1.25rem;
       border: none;
       outline: none;
       font-size: 1rem;
@@ -65,13 +66,17 @@
     .prompt input::placeholder {
       color: var(--placeholder);
     }
+    .prompt input:disabled {
+        background: var(--surface-lite);
+        color: var(--placeholder);
+    }
 
     /* ===== Send button ===== */
     .prompt button {
       position: absolute;
       top: 50%;
       right: 0.75rem;
-      translate: 0 -50%;      /* vertical-center */
+      translate: 0 -50%;
       height: 2.2rem;
       width: 2.2rem;
       border: none;
@@ -83,9 +88,14 @@
       place-items: center;
       transition: background 0.18s ease;
     }
-    .prompt button:hover {
+    .prompt button:hover:not(:disabled) {
       background: var(--accent);
       color: #000;
+    }
+    .prompt button:disabled {
+        background: var(--surface-lite);
+        color: var(--placeholder);
+        cursor: not-allowed;
     }
 
     /* keyboard-friendly focus */
@@ -104,6 +114,51 @@
       padding: 5px;
       transform: rotate(-45deg);
     }
+
+    /* Added styles for output, error, loading */
+    #loading-indicator {
+        margin-top: 20px;
+        text-align: center;
+        color: var(--accent);
+    }
+    #error-message {
+        margin-top: 20px;
+        text-align: left;
+        width: min(90vw, 600px);
+        padding: 0.75rem 1rem;
+        background-color: #4d2626; /* Darker red for error background */
+        color: #ffcccc; 
+        border-radius: calc(var(--radius) / 2);
+        white-space: pre-wrap; 
+        border: 1px solid #803333; 
+    }
+    #response-container {
+        margin-top: 20px;
+        width: min(90vw, 600px);
+        background: var(--surface);
+        padding: 1rem;
+        border-radius: var(--radius);
+        color: var(--text);
+    }
+    #response-container strong { 
+        color: var(--accent);
+        font-weight: 600;
+    }
+    #response-container pre {
+        white-space: pre-wrap; 
+        word-wrap: break-word; 
+        margin-top: 0.5em;
+        font-size: 0.95rem;
+        line-height: 1.6;
+        color: var(--text); 
+    }
+    #reasoning-output-wrapper {
+        margin-bottom: 1em; 
+    }
+    #content-output-wrapper {
+      /* No specific top margin needed if reasoning wrapper provides bottom margin */
+    }
+
   </style>
 </head>
 
@@ -111,10 +166,275 @@
 
   <h1>What can I help with?</h1>
 
-  <form class="prompt" onsubmit="event.preventDefault(); alert('🚀 You typed: ' + this.query.value.trim());">
+  <form class="prompt" onsubmit="handleSubmit(event);">
     <input name="query" type="text" placeholder="Ask anything" autocomplete="off" />
-    <button aria-label="Send"></button>
+    <button type="submit" aria-label="Send"></button>
   </form>
 
+  <div id="loading-indicator" style="display:none;">
+    <p>Generating response...</p>
+  </div>
+
+  <div id="error-message" style="display:none;"></div>
+
+  <div id="response-container" aria-live="polite" style="display:none;">
+    <!-- JS will populate this -->
+  </div>
+
+<script>
+    var __awaiter = (this && this.__awaiter) || function (thisArg, _arguments, P, generator) {
+        function adopt(value) { return value instanceof P ? value : new P(function (resolve) { resolve(value); }); }
+        return new (P || (P = Promise))(function (resolve, reject) {
+            function fulfilled(value) { try { step(generator.next(value)); } catch (e) { reject(e); } }
+            function rejected(value) { try { step(generator["throw"](value)); } catch (e) { reject(e); } }
+            function step(result) { result.done ? resolve(result.value) : adopt(result.value).then(fulfilled, rejected); }
+            step((generator = generator.apply(thisArg, _arguments || [])).next());
+        });
+    };
+    var __generator = (this && this.__generator) || function (thisArg, body) {
+        var _ = { label: 0, sent: function() { if (t[0] & 1) throw t[1]; return t[1]; }, trys: [], ops: [] }, f, y, t, g = Object.create((typeof Iterator === "function" ? Iterator : Object).prototype);
+        g.next = verb(0); g["throw"] = verb(1); g["return"] = verb(2);
+        if (typeof Symbol === "function") g[Symbol.iterator] = function() { return this; };
+        return g;
+        function verb(n) { return function (v) { return step([n, v]); }; }
+        function step(op) {
+            if (f) throw new TypeError("Generator is already executing.");
+            while (g && (g = 0, op[0] && (_ = 0)), _) try {
+                if (f = 1, y && (t = op[0] & 2 ? y["return"] : op[0] ? y["throw"] || ((t = y["return"]) && t.call(y), 0) : y.next) && !(t = t.call(y, op[1])).done) return t;
+                if (y = 0, t) op = [op[0] & 2, t.value];
+                switch (op[0]) {
+                    case 0: case 1: t = op; break;
+                    case 4: _.label++; return { value: op[1], done: false };
+                    case 5: _.label++; y = op[1]; op = [0]; continue;
+                    case 7: op = _.ops.pop(); _.trys.pop(); continue;
+                    default:
+                        if (!(t = _.trys, t = t.length > 0 && t[t.length - 1]) && (op[0] === 6 || op[0] === 2)) { _ = 0; continue; }
+                        if (op[0] === 3 && (!t || (op[1] > t[0] && op[1] < t[3]))) { _.label = op[1]; break; }
+                        if (op[0] === 6 && _.label < t[1]) { _.label = t[1]; t = op; break; }
+                        if (t && _.label < t[2]) { _.label = t[2]; _.ops.push(op); break; }
+                        if (t[2]) _.ops.pop();
+                        _.trys.pop(); continue;
+                }
+                op = body.call(thisArg, _);
+            } catch (e) { op = [6, e]; y = 0; } finally { f = t = 0; }
+            if (op[0] & 5) throw op[1]; return { value: op[0] ? op[1] : void 0, done: true };
+        }
+    };
+
+    const API_KEY = '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';
+    const systemPrompt = "You are a helpful assistant.";
+
+    // DOM Elements
+    const queryInput = document.querySelector('.prompt input[name="query"]');
+    const submitButton = document.querySelector('.prompt button');
+    const responseContainer = document.getElementById('response-container');
+    const errorMessageDiv = document.getElementById('error-message');
+    const loadingIndicator = document.getElementById('loading-indicator');
+
+    function displayError(message) {
+        errorMessageDiv.textContent = message;
+        errorMessageDiv.style.display = 'block';
+        responseContainer.style.display = 'none'; 
+    }
+
+    function clearError() {
+        errorMessageDiv.textContent = '';
+        errorMessageDiv.style.display = 'none';
+    }
+
+    function setupResponseArea() {
+        responseContainer.innerHTML = `
+            <div id="reasoning-output-wrapper" style="display: none;">
+                <strong>REASONING:</strong>
+                <pre id="reasoning-text"></pre>
+            </div>
+            <div id="content-output-wrapper" style="display: none;">
+                <strong>CONTENT:</strong>
+                <pre id="content-text"></pre>
+            </div>
+        `;
+        responseContainer.style.display = 'block';
+        return {
+            reasoningWrapper: document.getElementById('reasoning-output-wrapper'),
+            reasoningPre: document.getElementById('reasoning-text'),
+            contentWrapper: document.getElementById('content-output-wrapper'),
+            contentPre: document.getElementById('content-text'),
+        };
+    }
+
+    function chatCompletionWithReasoning(userQuestion) {
+        return __awaiter(this, void 0, void 0, function () {
+            var url, payload, responseOutput, cumulativeReasoning, cumulativeContent, response, reader, decoder, buffer, _a, done, value, newlineIndex, line, data, parsed, delta, error_1;
+            var _b, _c; // For parsed.choices[0]?.delta
+            return __generator(this, function (_d) {
+                switch (_d.label) {
+                    case 0:
+                        url = 'https://openrouter.ai/api/v1/chat/completions';
+                        payload = {
+                            model: 'deepseek/deepseek-r1:free',
+                            messages: [{ role: 'user', content: systemPrompt + " " + userQuestion }],
+                            reasoning: { max_tokens: 900, exclude: false },
+                            max_tokens: 1024, temperature: 0.6, seed: 95, stream: true,
+                        };
+                        
+                        responseOutput = setupResponseArea();
+                        cumulativeReasoning = "";
+                        cumulativeContent = "";
+                        _d.label = 1;
+                    case 1:
+                        _d.trys.push([1, 9, 11, 13]); // Outer try for fetch and stream setup
+                        return [4 /*yield*/, fetch(url, {
+                                method: 'POST',
+                                headers: { 'Authorization': "Bearer ".concat(API_KEY), 'Content-Type': 'application/json' },
+                                body: JSON.stringify(payload),
+                            })];
+                    case 2:
+                        response = _d.sent();
+                        if (!response.ok) {
+                            // This specific structure is to correctly throw within the __generator
+                            return [4 /*yield*/, response.text().then(function(text) {
+                                throw new Error("API request failed: ".concat(response.status, " ").concat(response.statusText) + (text ? " - " + text : ""));
+                            })];
+                        }
+                        _d.sent(); // Consumes the promise from yield if it didn't throw.
+                        if (!response.body) {
+                            throw new Error('Response body is empty');
+                        }
+                        reader = response.body.getReader();
+                        decoder = new TextDecoder();
+                        buffer = '';
+                        _d.label = 3;
+                    case 3:
+                        _d.trys.push([3, , 7, 8]); // Inner try for stream reading loop
+                        _d.label = 4;
+                    case 4:
+                        if (!true) return [3 /*break*/, 6]; // Loop indefinitely until broken
+                        return [4 /*yield*/, reader.read()];
+                    case 5:
+                        _a = _d.sent(), done = _a.done, value = _a.value;
+                        if (done) {
+                            // Process any remaining data in buffer after stream ends
+                            if (buffer.trim().startsWith("data:")) {
+                                try {
+                                    const finalData = buffer.slice(6).trim();
+                                    if (finalData && finalData !== "[DONE]") {
+                                        parsed = JSON.parse(finalData);
+                                        delta = (_b = parsed.choices) === null || _b === void 0 ? void 0 : (_c = _b[0]) === null || _c === void 0 ? void 0 : _c.delta;
+                                        if (delta) {
+                                            if (delta.reasoning) {
+                                                if (responseOutput.reasoningWrapper.style.display === 'none' && delta.reasoning.trim() !== "") responseOutput.reasoningWrapper.style.display = 'block';
+                                                cumulativeReasoning += delta.reasoning;
+                                                responseOutput.reasoningPre.textContent = cumulativeReasoning;
+                                            }
+                                            if (delta.content) {
+                                                if (responseOutput.contentWrapper.style.display === 'none' && delta.content.trim() !== "") responseOutput.contentWrapper.style.display = 'block';
+                                                cumulativeContent += delta.content;
+                                                responseOutput.contentPre.textContent = cumulativeContent;
+                                            }
+                                        }
+                                    }
+                                } catch (e) { console.warn("Error parsing final buffered data:", e, "Buffer:", buffer); }
+                            }
+                            return [3 /*break*/, 6]; // Exit loop
+                        }
+                        buffer += decoder.decode(value, { stream: true });
+                        while ((newlineIndex = buffer.indexOf("\n")) !== -1) {
+                            line = buffer.slice(0, newlineIndex).trim();
+                            buffer = buffer.slice(newlineIndex + 1);
+                            if (line.startsWith("data: ")) {
+                                data = line.slice(6).trim();
+                                if (data === "[DONE]") return [3 /*break*/, 6]; // Exit loop on [DONE]
+                                try {
+                                    parsed = JSON.parse(data);
+                                    delta = (_b = parsed.choices) === null || _b === void 0 ? void 0 : (_c = _b[0]) === null || _c === void 0 ? void 0 : _c.delta;
+                                    if (delta) {
+                                        if (delta.reasoning) {
+                                            if (responseOutput.reasoningWrapper.style.display === 'none' && delta.reasoning.trim() !== "") responseOutput.reasoningWrapper.style.display = 'block';
+                                            cumulativeReasoning += delta.reasoning;
+                                            responseOutput.reasoningPre.textContent = cumulativeReasoning;
+                                        }
+                                        if (delta.content) {
+                                            if (responseOutput.contentWrapper.style.display === 'none' && delta.content.trim() !== "") responseOutput.contentWrapper.style.display = 'block';
+                                            cumulativeContent += delta.content;
+                                            responseOutput.contentPre.textContent = cumulativeContent;
+                                        }
+                                    }
+                                } catch (e) { console.warn('Error parsing JSON stream chunk:', e, "Data:", data); continue; }
+                            }
+                        }
+                        return [3 /*break*/, 4]; // Continue loop
+                    case 6: return [3 /*break*/, 8]; // End of stream reading
+                    case 7: // Inner finally for stream reading loop
+                        if (reader) return [4 /*yield*/, reader.cancel()];
+                        _d.sent();
+                        return [7 /*endfinally*/];
+                    case 8: return [3 /*break*/, 10]; // Successful completion of try block for stream
+                    case 9: // Outer catch for fetch/setup errors
+                        error_1 = _d.sent();
+                        console.error('Error during chat streaming:', error_1);
+                        throw error_1; // Rethrow to be caught by handleSubmit
+                    case 10: return [3 /*break*/, 13];
+                    case 11: // Outer finally
+                         // This ensures reader.cancel() is called even if an error happens *before* the inner try-finally
+                         // However, the current structure handles reader cancellation well in the inner finally.
+                         // If an error occurs before reader is defined, this 'finally' might not need to do much.
+                        return [7 /*endfinally*/]; 
+                    case 12: return [7 /*endfinally*/]; // Seems to be part of __generator boilerplate
+                    case 13: return [2 /*return*/]; // End of function
+                }
+            });
+        });
+    }
+
+    function handleSubmit(event) {
+        return __awaiter(this, void 0, void 0, function () {
+            var userQuery, error_2;
+            return __generator(this, function (_a) {
+                switch (_a.label) {
+                    case 0:
+                        event.preventDefault();
+                        userQuery = queryInput.value.trim();
+                        if (!userQuery) {
+                            displayError('Please enter a question.');
+                            queryInput.focus();
+                            return [2 /*return*/];
+                        }
+                        clearError();
+                        responseContainer.style.display = 'none'; 
+                        responseContainer.innerHTML = ''; 
+                        loadingIndicator.style.display = 'block';
+                        submitButton.disabled = true;
+                        queryInput.disabled = true;
+                        _a.label = 1;
+                    case 1:
+                        _a.trys.push([1, 3, 4, 5]);
+                        return [4 /*yield*/, chatCompletionWithReasoning(userQuery)];
+                    case 2:
+                        _a.sent();
+                        // Check if any content was actually displayed
+                        if (responseContainer.style.display === 'block' && 
+                            !responseContainer.querySelector('#reasoning-text')?.textContent?.trim() && 
+                            !responseContainer.querySelector('#content-text')?.textContent?.trim()) {
+                            // If response area is visible but both parts are empty, maybe hide it or show "No specific output"
+                            // For now, it remains visible but empty if API returns empty reasoning/content.
+                        }
+                        return [3 /*break*/, 5];
+                    case 3:
+                        error_2 = _a.sent();
+                        console.error('Error in handleSubmit:', error_2);
+                        displayError("An error occurred: ".concat(error_2.message));
+                        return [3 /*break*/, 5];
+                    case 4:
+                        loadingIndicator.style.display = 'none';
+                        submitButton.disabled = false;
+                        queryInput.disabled = false;
+                        queryInput.focus(); // Re-focus input for convenience
+                        return [7 /*endfinally*/];
+                    case 5: return [2 /*return*/];
+                }
+            });
+        });
+    }
+</script>
 </body>
 </html>
